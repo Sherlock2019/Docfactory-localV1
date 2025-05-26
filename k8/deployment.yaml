@@ -1,0 +1,32 @@
+# k8/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docfactory
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: docfactory
+  template:
+    metadata:
+      labels:
+        app: docfactory
+    spec:
+      containers:
+      - name: docfactory
+        image: your-registry/docfactory:latest
+        ports:
+        - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docfactory
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8000
+  selector:
+    app: docfactory

@@ -1,0 +1,14 @@
+docfactory_flask/
+├── app.py                     ← Main Flask app
+├── templates/
+│   └── index.html             ← Web UI
+├── uploads/
+│   ├── template.docx          ← Uploaded .docx template
+│   ├── CUSTOMER_NAME.txt      ← Uploaded/typed input for each placeholder
+├── output/
+│   └── filled_template.docx   ← Final generated doc
+├── utils/
+│   ├── extract_placeholders.py
+│   ├── fill_template.py
+├── requirements.txt
+

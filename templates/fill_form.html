@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  </head>
+  <body>
+    <h1>Fill in your placeholders</h1>
+    <form action="{{ url_for('generate') }}" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="template_filename" value="{{ template_filename }}">
+
+      <h2>Key Fields</h2>
+      {% for ph in key_fields %}
+        <label>{{ ph }}</label>
+        <input type="text" name="{{ ph }}" placeholder="{{ ph }}">
+      {% endfor %}
+
+      <h2>File Fields</h2>
+      {% for ph in file_fields %}
+        <label>Upload for {{ ph }}</label>
+        <input type="file" name="{{ ph }}" accept="image/*,.pptx,.docx,.xlsx,.txt">
+        <input type="hidden" name="file_fields" value="{{ ph }}">
+      {% endfor %}
+
+      <button type="submit">Generate Document</button>
+    </form>
+  </body>
+</html>

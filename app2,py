@@ -1,0 +1,116 @@
+from flask import Flask, render_template, request, send_file, abort
+from utils.extract_placeholders import extract_placeholders
+from utils.document_filler import fill_document_template # Changed import
+from uuid import uuid4
+import os
+import tempfile # For better temporary file management
+from datetime import date
+
+app = Flask(__name__)
+
+# The five “key” text fields + country (now also used for filename)
+KEY_FIELDS = ["CUSTOMER_NAME", "CITY_NAME", "SA_EMAIL", "RAX_TEAM", "PARTNER_NAME", "COUNTRY"]
+
+@app.route("/", methods=["GET"])
+def index():
+    # Renders the bare-bones HTML/JS shell
+    return render_template("index.html", KEY_FIELDS=KEY_FIELDS)
+
+@app.route("/analyze", methods=["POST"])
+def analyze():
+    if "template" not in request.files:
+        return {"error": "No template file provided"}, 400
+
+    tpl = request.files["template"]
+    if tpl.filename == '':
+        return {"error": "No selected template file"}, 400
+
+    # Ensure the file is a DOCX or PPTX for analysis
+    if not tpl.filename.lower().endswith((".docx", ".pptx")):
+        return {"error": "Only .docx and .pptx templates are supported."}, 400
+
+    # Save uploaded template temporarily for analysis
+    # Using tempfile.NamedTemporaryFile ensures unique name and handles cleanup
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(tpl.filename)[1]) as tmp_tpl:
+        tpl.save(tmp_tpl.name)
+        tmp_path = tmp_tpl.name # Get the actual path
+
+    try:
+        # Extract ALL placeholders, preserving their document order
+        placeholders = extract_placeholders(tmp_path)
+    except Exception as e:
+        # Catch potential errors during document parsing (e.g., corrupted file)
+        return {"error": f"Error analyzing template: {e}"}, 500
+    finally:
+        os.unlink(tmp_path) # Clean up the temporary template file immediately
+
+    # Return them in one ordered list
+    return {"placeholders": placeholders}
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    if "template" not in request.files:
+        return {"error": "No template file provided for generation"}, 400
+
+    tpl = request.files["template"]
+    if tpl.filename == '':
+        return {"error": "No selected template file for generation"}, 400
+
+    # Ensure the file is a DOCX or PPTX
+    file_extension = tpl.filename.lower().rsplit(".", 1)[-1]
+    if file_extension not in ("docx", "pptx"):
+        return {"error": "Only .docx and .pptx templates are supported for generation."}, 400
+
+    # Save the template file temporarily for processing
+    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(tpl.filename)[1]) as tmp_tpl:
+        tpl.save(tmp_tpl.name)
+        tpl_path = tmp_tpl.name
+
+    text_inputs = {
+        key: request.form.get(key, "")
+        for key in KEY_FIELDS
+    }
+
+    file_inputs = {}
+    for key in request.files:
+        if key != "template" and key not in KEY_FIELDS: # Exclude the template file itself
+            f = request.files[key]
+            if f and f.filename:
+                file_inputs[key] = f # Pass the FileStorage object directly
+
+    # Generate output filename
+    customer_name = text_inputs.get("CUSTOMER_NAME", "UnknownCustomer").replace(" ", "_")
+    partner_name = text_inputs.get("PARTNER_NAME", "UnknownPartner").replace(" ", "_")
+    sa_email_prefix = text_inputs.get("SA_EMAIL", "UnknownSA").split('@')[0] # Get prefix before @
+    today_str = date.today().strftime("%Y%m%d")
+
+    # Construct the base filename, preserving the original extension
+    output_filename_base = f"{customer_name}_{partner_name}_{sa_email_prefix}_{today_str}"
+    out_filename = f"{output_filename_base}.{file_extension}"
+
+    # Generate and send back
+    # Using tempfile.NamedTemporaryFile for the output file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{file_extension}") as tmp_out:
+        out_path = tmp_out.name
+
+    try:
+        fill_document_template(tpl_path, file_inputs, text_inputs, out_path)
+    except ValueError as e:
+        # Catch specific errors from fill_document_template
+        return {"error": str(e)}, 400
+    except Exception as e:
+        return {"error": f"Document generation failed: {e}"}, 500
+    finally:
+        os.unlink(tpl_path) # Clean up the temporary template file
+
+    try:
+        return send_file(out_path,
+                         as_attachment=True,
+                         download_name=out_filename,
+                         mimetype=f"application/vnd.openxmlformats-officedocument.{'wordprocessingml.document' if file_extension == 'docx' else 'presentationml.presentation'}")
+    finally:
+        os.unlink(out_path) # Clean up the generated file after sending
+
+if __name__=="__main__":
+    app.run(debug=True)
+

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DocFactory - Download Complete</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>✅ Document Generated Successfully!</h1>
+
+  <section>
+    <p>Your document "<strong>{{ out_filename }}</strong>" is ready.</p>
+    <a href="{{ download_url }}" download="{{ out_filename }}" class="button-link">Download Document</a>
+  </section>
+
+  <section style="margin-top: 2em;">
+    <p>Ready to start a new document?</p>
+    <button onclick="window.location.href='/'">Start New Template</button>
+  </section>
+
+  <style>
+    /* Add specific styles for download button if needed */
+    .button-link {
+        display: inline-block;
+        background: #28a745; /* Green color */
+        color: white;
+        border: none;
+        padding: 0.8em 1.5em;
+        font-size: 1.1em;
+        cursor: pointer;
+        text-decoration: none; /* Remove underline */
+        border-radius: 4px; /* Slightly rounded corners */
+        text-align: center;
+    }
+    .button-link:hover {
+        background: #218838; /* Darker green on hover */
+    }
+  </style>
+</body>
+</html>
+
