@@ -1,8 +1,4 @@
 
-<img width="201" alt="image" src="https://github.com/user-attachments/assets/1882bbe9-942b-4c0c-8904-6d2768b36dcb" />
-
-https://github.com/Sherlock2019/Docfactory-localV1/blob/main/doc_factory_good.gif
-
 ![Demo Animation](doc_factory_good.gif)
 
 
