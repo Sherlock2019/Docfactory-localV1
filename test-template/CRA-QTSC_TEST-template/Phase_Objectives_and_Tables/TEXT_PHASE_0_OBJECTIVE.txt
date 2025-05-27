@@ -1,0 +1,1 @@
+Establish a baseline understanding of current infrastructure, applications, software licensing, and risk posture through automated discovery and analysis.

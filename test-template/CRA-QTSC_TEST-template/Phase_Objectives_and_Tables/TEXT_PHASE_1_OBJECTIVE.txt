@@ -1,0 +1,1 @@
+Review the current infrastructure and define the target cloud-ready architecture based on business needs and technical analysis.

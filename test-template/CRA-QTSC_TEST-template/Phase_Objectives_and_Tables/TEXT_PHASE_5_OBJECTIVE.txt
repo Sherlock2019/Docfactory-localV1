@@ -1,0 +1,1 @@
+Establish the ITSM baseline, evaluate tools and practices, and define a future-state service management architecture.

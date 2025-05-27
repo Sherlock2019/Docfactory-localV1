@@ -18,7 +18,7 @@
       align-items: center;
     }
     .expander-header:hover {
-      background-color: #e0e0e0;
+      background-color: #e0f0f0;
     }
     .expander-content {
       border: 1px solid #ddd;
@@ -26,16 +26,14 @@
       padding: 15px;
       border-radius: 0 0 5px 5px;
       background-color: #f9f9f9;
-      /* display: none; */ /* Removed this to make it expanded by default via JS class toggle */
     }
     .expander-header::after {
-      content: '▼'; /* Down arrow for collapsed state */
+      content: '▼';
       font-size: 1.2em;
     }
     .expander-header.expanded::after {
-      content: '▲'; /* Up arrow for expanded state */
+      content: '▲';
     }
-    /* Add some basic styling for list items if needed */
     .expander-content ul {
       list-style-type: disc;
       margin-left: 20px;
@@ -47,7 +45,7 @@
 
     /* Styles for the "Back to Main Menu" button */
     #backToMainMenu {
-      display: none; /* Hidden initially */
+      display: none;
       margin-top: 20px;
       padding: 10px 20px;
       font-size: 1em;
@@ -85,10 +83,43 @@
       color: #0056b3;
       text-decoration: underline;
     }
+
+    /* Styles for form groups and inputs */
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="file"],
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      /* Styles to match the dropdown appearance from your screenshot */
+      background-color: #fff;
+      cursor: pointer;
+      -webkit-appearance: none; /* Remove default browser styling for select */
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007bff%22%20d%3D%22M287%2C197.9c-3.6%2C3.6-7.8%2C5.4-12.4%2C5.4c-4.6%2C0-9.2-1.8-12.8-5.4L146.2%2C80.8L30.6%2C190.2c-3.6%2C3.6-7.8%2C5.4-12.4%2C5.4c-4.6%2C0-9.2-1.8-12.8-5.4c-7.2-7.2-7.2-18.9%2C0-26.1L133.4%2C3.1c7.2-7.2%2C18.9-7.2%2C26.1%2C0l127.5%2C127.5C294.2%2C178.9%2C294.2%2C190.7%2C287%2C197.9z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
+      background-repeat: no-repeat;
+      background-position: right 0.7em top 50%, 0 0;
+      background-size: 0.65em auto, 100%;
+    }
+    #customDocTypeContainer {
+      display: none; /* Hidden by default */
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>📄 DocFactory - Generate Documents</h1>
+  <h1>📄 DocFactory </h1>
 
   <section id="howToUse">
     <div class="expander-header" id="howToUseHeader">
@@ -117,8 +148,25 @@
   </section>
   <section id="uploader">
     <form id="tplForm" enctype="multipart/form-data">
-      <label>Select your .docx or .pptx template:</label>
-      <input type="file" name="template" accept=".docx,.pptx" required>
+      <div class="form-group">
+        <label for="template">Select your .docx or .pptx template:</label>
+        <input type="file" name="template" id="template" accept=".docx,.pptx" required>
+      </div>
+
+      <div class="form-group">
+        <label for="doc_type_tpl_select">Type of Document:</label>
+        <select name="doc_type_select" id="doc_type_tpl_select" required> <option value="">Select Document Type</option>
+          <option value="Solution-Proposal">Solution Proposal</option>
+          <option value="Migration-Plan">Migration Plan</option>
+          <option value="CRA-Report">CRA Report</option>
+          <option value="Power-Presentation">Power Presentation</option>
+          <option value="Other">Other (Specify Below)</option>
+        </select>
+      </div>
+      <div class="form-group" id="customDocTypeContainer">
+        <label for="custom_doc_type">Custom Document Type:</label>
+        <input type="text" id="custom_doc_type" name="custom_doc_type" placeholder="e.g., My-Custom-Report">
+      </div>
       <button type="submit">Analyze Template</button>
     </form>
   </section>
@@ -145,7 +193,7 @@
     // Function to fetch and display generated documents
     async function loadGeneratedDocuments() {
         const docsListElement = document.getElementById('docsList');
-        docsListElement.innerHTML = '<li>Loading documents...</li>'; // Show loading state
+        docsListElement.innerHTML = '<li>Loading documents...</li>';
 
         try {
             const response = await fetch(GENERATED_DOCS_URL);
@@ -157,13 +205,13 @@
             if (filenames.length === 0) {
                 docsListElement.innerHTML = '<li>No documents generated yet.</li>';
             } else {
-                docsListElement.innerHTML = ''; // Clear loading message
+                docsListElement.innerHTML = '';
                 filenames.forEach(filename => {
                     const listItem = document.createElement('li');
                     const link = document.createElement('a');
                     link.href = DOWNLOAD_BASE_URL + encodeURIComponent(filename);
                     link.textContent = filename;
-                    link.download = filename; // Suggests filename for download
+                    link.download = filename;
                     listItem.appendChild(link);
                     docsListElement.appendChild(listItem);
                 });
@@ -179,8 +227,11 @@
     document.addEventListener('DOMContentLoaded', () => {
       const header = document.getElementById('howToUseHeader');
       const content = document.getElementById('howToUseContent');
+      const docTypeSelect = document.getElementById('doc_type_tpl_select'); // Updated ID
+      const customDocTypeContainer = document.getElementById('customDocTypeContainer');
+      const customDocTypeInput = document.getElementById('custom_doc_type');
 
-      // Set initial state to expanded
+
       content.style.display = 'block';
       header.classList.add('expanded');
 
@@ -194,42 +245,49 @@
         }
       });
 
+      // Show/hide custom document type input based on select value
+      docTypeSelect.addEventListener('change', () => {
+        if (docTypeSelect.value === 'Other') {
+          customDocTypeContainer.style.display = 'block';
+          customDocTypeInput.required = true;
+        } else {
+          customDocTypeContainer.style.display = 'none';
+          customDocTypeInput.required = false;
+          customDocTypeInput.value = ''; // Clear value if not 'Other'
+        }
+      });
+
+
       // Event listener for the "Go Back to Main Menu" button
       document.getElementById('backToMainMenu').addEventListener('click', () => {
-          window.location.reload(); // Reloads the page, effectively going back to initial state
+          window.location.reload();
       });
 
       // Intercept the form submission for document generation
-      // to display the back button after download
       document.getElementById('genForm').addEventListener('submit', async ev => {
-          ev.preventDefault(); // Prevent default form submission to handle with fetch
+          ev.preventDefault();
 
           const form = ev.target;
-          const formData = new FormData(form); // Get form data
+          const formData = new FormData(form);
 
-          // Make the fetch request to the /generate endpoint
           try {
               const res = await fetch('/generate', { method: 'POST', body: formData });
               const jsonResponse = await res.json();
 
               if (res.ok) {
                   alert('Document generated successfully! Check your downloads: ' + jsonResponse.filename);
-                  // Refresh the list of generated documents
                   await loadGeneratedDocuments();
 
-                  // Hide the generate section and show a message with the back button
                   document.getElementById('generateButton').style.display = 'none';
                   document.getElementById('backToMainMenu').style.display = 'block';
-                  // Optionally, hide the input fields too if you want a clean view
                   document.getElementById('inputsContainer').style.display = 'none';
 
-                  // Initiate download by creating a temporary link and clicking it
                   const downloadLink = document.createElement('a');
                   downloadLink.href = DOWNLOAD_BASE_URL + encodeURIComponent(jsonResponse.filename);
-                  downloadLink.download = jsonResponse.filename; // Suggest filename for download
-                  document.body.appendChild(downloadLink); // Append to body (can be invisible)
-                  downloadLink.click(); // Programmatically click the link
-                  document.body.removeChild(downloadLink); // Remove the link
+                  downloadLink.download = jsonResponse.filename;
+                  document.body.appendChild(downloadLink);
+                  downloadLink.click();
+                  document.body.removeChild(downloadLink);
               } else {
                   alert('Error generating document: ' + (jsonResponse.error || 'Unknown error'));
               }
@@ -239,19 +297,35 @@
           }
       });
 
-      // Load generated documents when the page loads
       loadGeneratedDocuments();
     });
 
 
-    // Analyze form → build dynamic fields (This part remains largely the same)
+    // Analyze form → build dynamic fields
     document.getElementById('tplForm').addEventListener('submit', async ev => {
       ev.preventDefault();
       const form = ev.target;
-      const data = new FormData(form);
+      
+      // Get the selected template file
+      const tplFile = document.getElementById('template').files[0];
+      if (!tplFile) {
+          alert("Please select a .docx or .pptx template file.");
+          return; // Stop if no file is selected
+      }
 
-      const tplFile = form.querySelector('input[name=template]').files[0];
-      data.append('template', tplFile);
+      // Determine the document type to send
+      let docType = document.getElementById('doc_type_tpl_select').value; // Updated ID
+      if (docType === 'Other') {
+          docType = document.getElementById('custom_doc_type').value;
+          if (!docType) {
+              alert("Please specify a custom document type or select from the list.");
+              return; // Stop if 'Other' is selected but no custom type is entered
+          }
+      }
+      
+      const data = new FormData();
+      data.append('template', tplFile); // Manually append the template file
+      data.append('doc_type', docType); // Append the determined document type
 
       try {
           const res = await fetch('/analyze', { method:'POST', body:data });
@@ -263,21 +337,36 @@
               document.getElementById('uploader').style.display = 'none';
               document.getElementById('fields').style.display = '';
 
-              // Reset visibility for subsequent generations
               document.getElementById('generateButton').style.display = 'block';
               document.getElementById('backToMainMenu').style.display = 'none';
-              document.getElementById('inputsContainer').style.display = 'block'; // Ensure inputs are visible
+              document.getElementById('inputsContainer').style.display = 'block';
 
-              const fileInputClone = document.createElement('input');
-              fileInputClone.type = 'file';
-              fileInputClone.name = 'template';
+              // Clear previous hidden inputs to avoid duplicates
+              const oldTemplateInput = document.querySelector('#genForm input[name="template"]');
+              if (oldTemplateInput) oldTemplateInput.remove();
+              const oldDocTypeInput = document.querySelector('#genForm input[name="doc_type"]');
+              if (oldDocTypeInput) oldDocTypeInput.remove();
 
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(tplFile);
-              fileInputClone.files = dataTransfer.files;
 
-              fileInputClone.style.display = 'none';
-              document.getElementById('genForm').appendChild(fileInputClone);
+              // Clone the template file input for the generation form
+              if (tplFile) {
+                const fileInputClone = document.createElement('input');
+                fileInputClone.type = 'file';
+                fileInputClone.name = 'template';
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(tplFile);
+                fileInputClone.files = dataTransfer.files;
+                fileInputClone.style.display = 'none';
+                document.getElementById('genForm').appendChild(fileInputClone);
+              }
+
+              // Create hidden input for doc_type for the generation form
+              const docTypeInputClone = document.createElement('input');
+              docTypeInputClone.type = 'hidden';
+              docTypeInputClone.name = 'doc_type';
+              docTypeInputClone.value = docType;
+              document.getElementById('genForm').appendChild(docTypeInputClone);
+
 
               const container = document.getElementById('inputsContainer');
               container.innerHTML = '';
@@ -322,4 +411,5 @@
   </script>
 </body>
 </html>
+
 

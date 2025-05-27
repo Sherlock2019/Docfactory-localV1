@@ -1,0 +1,1 @@
+The main objectives are to establish baseline assessments, evaluate current infrastructure and operations, and propose future-state architectures and processes.

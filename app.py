@@ -87,14 +87,28 @@ def generate():
     # Get the document type from the form data
     doc_type = request.form.get("doc_type", "Document").replace(" ", "-") # Get and sanitize doc_type
 
-    # Collect text inputs, excluding 'doc_type' which is handled separately for the filename
+    # Iterate through form data to collect placeholder values
     for key, value in request.form.items():
-        if key not in ['template', 'doc_type', 'doc_type_select', 'custom_doc_type']: # Exclude form internal fields
+        # Exclude form internal fields and radio button values
+        if key in ['template', 'doc_type', 'doc_type_select', 'custom_doc_type'] or key.startswith('input_type_'):
+            continue
+        
+        # Check if this key corresponds to a text input (textarea) for a non-key field
+        if key.endswith('_text_content'):
+            placeholder_name = key[:-len('_text_content')] # Extract original placeholder name
+            # Only add if the user explicitly chose text for this placeholder
+            if request.form.get(f'input_type_{placeholder_name}') == 'text':
+                text_inputs[placeholder_name] = value
+        # Otherwise, it's a regular text input (like KEY_FIELDS)
+        else:
             text_inputs[key] = value
 
+    # Process file uploads
     for key, file_storage in request.files.items():
         if key != 'template' and file_storage.filename != '':
-            file_inputs[key] = file_storage
+            # Only add if the user explicitly chose file for this placeholder
+            if request.form.get(f'input_type_{key}') == 'file':
+                file_inputs[key] = file_storage
 
     # Generate a unique output filename in the format: typeofdoc-customername-partnername-SAname-date
     # Sanitize inputs for filename
@@ -145,4 +159,5 @@ def download_file(filename):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
 

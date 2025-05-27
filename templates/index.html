@@ -87,6 +87,11 @@
     /* Styles for form groups and inputs */
     .form-group {
       margin-bottom: 15px;
+      padding-bottom: 10px; /* Add some padding for the radio buttons */
+      border-bottom: 1px dashed #eee; /* Light separator */
+    }
+    .form-group:last-child {
+      border-bottom: none; /* No separator for the last group */
     }
     .form-group label {
       display: block;
@@ -95,12 +100,15 @@
     }
     .form-group input[type="text"],
     .form-group input[type="file"],
-    .form-group select {
+    .form-group select,
+    .form-group textarea { /* Added textarea */
       width: 100%;
       padding: 8px;
       border: 1px solid #ddd;
       border-radius: 4px;
       box-sizing: border-box;
+    }
+    .form-group select {
       /* Styles to match the dropdown appearance from your screenshot */
       background-color: #fff;
       cursor: pointer;
@@ -116,10 +124,28 @@
       display: none; /* Hidden by default */
       margin-top: 10px;
     }
+
+    /* Styles for the new input type selection */
+    .input-type-selection {
+        margin-top: 5px;
+        margin-bottom: 10px;
+    }
+    .input-type-selection label {
+        display: inline-block;
+        margin-right: 15px;
+        font-weight: normal; /* Override bold for general labels */
+    }
+    .input-type-selection input[type="radio"] {
+        width: auto; /* Allow radio buttons to be small */
+        margin-right: 5px;
+    }
+    .file-input-wrapper, .text-input-wrapper {
+        margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>📄 DocFactory </h1>
+  <h1>📄 TheDocFactory -Create any  document Easier , Faster , Better  </h1>
 
   <section id="howToUse">
     <div class="expander-header" id="howToUseHeader">
@@ -155,7 +181,8 @@
 
       <div class="form-group">
         <label for="doc_type_tpl_select">Type of Document:</label>
-        <select name="doc_type_select" id="doc_type_tpl_select" required> <option value="">Select Document Type</option>
+        <select name="doc_type_select" id="doc_type_tpl_select" required>
+          <option value="">Select Document Type</option>
           <option value="Solution-Proposal">Solution Proposal</option>
           <option value="Migration-Plan">Migration Plan</option>
           <option value="CRA-Report">CRA Report</option>
@@ -379,19 +406,92 @@
                 div.appendChild(label);
 
                 if (KEY_FIELDS.includes(ph)) {
+                  // Key fields remain as simple text inputs
                   const inp = document.createElement('input');
                   inp.type = 'text';
                   inp.name = ph;
+                  // Only these specific key fields are required for filename generation
                   if (["CUSTOMER_NAME", "PARTNER_NAME", "SA_EMAIL"].includes(ph)) {
                     inp.required = true;
                   }
                   div.appendChild(inp);
                 } else {
-                  const inp = document.createElement('input');
-                  inp.type = 'file';
-                  inp.name = ph;
-                  inp.accept = 'image/*,.docx,.pptx,.xlsx,.txt';
-                  div.appendChild(inp);
+                  // For non-key fields, provide option to upload or enter text
+                  const inputTypeSelection = document.createElement('div');
+                  inputTypeSelection.className = 'input-type-selection';
+
+                  // Radio for File Upload
+                  const fileRadioId = `file_option_${ph}`;
+                  const fileRadio = document.createElement('input');
+                  fileRadio.type = 'radio';
+                  fileRadio.name = `input_type_${ph}`; // Group radio buttons by placeholder
+                  fileRadio.id = fileRadioId;
+                  fileRadio.value = 'file';
+                  fileRadio.checked = true; // Default to file upload
+                  const fileLabel = document.createElement('label');
+                  fileLabel.htmlFor = fileRadioId;
+                  fileLabel.textContent = 'Upload File';
+                  inputTypeSelection.appendChild(fileRadio);
+                  inputTypeSelection.appendChild(fileLabel);
+
+                  // Radio for Text Entry
+                  const textRadioId = `text_option_${ph}`;
+                  const textRadio = document.createElement('input');
+                  textRadio.type = 'radio';
+                  textRadio.name = `input_type_${ph}`;
+                  textRadio.id = textRadioId;
+                  textRadio.value = 'text';
+                  const textLabel = document.createElement('label');
+                  textLabel.htmlFor = textRadioId;
+                  textLabel.textContent = 'Enter Text';
+                  inputTypeSelection.appendChild(textRadio);
+                  inputTypeSelection.appendChild(textLabel);
+
+                  div.appendChild(inputTypeSelection);
+
+                  // File input wrapper
+                  const fileInputWrapper = document.createElement('div');
+                  fileInputWrapper.className = 'file-input-wrapper';
+                  const fileInp = document.createElement('input');
+                  fileInp.type = 'file';
+                  fileInp.name = ph; // The name of the file input is the placeholder itself
+                  fileInp.accept = 'image/*,.docx,.pptx,.xlsx,.txt';
+                  // fileInp.required = true; <--- REMOVED THIS LINE
+                  fileInputWrapper.appendChild(fileInp);
+                  div.appendChild(fileInputWrapper);
+
+                  // Textarea input wrapper (hidden by default)
+                  const textInputWrapper = document.createElement('div');
+                  textInputWrapper.className = 'text-input-wrapper';
+                  textInputWrapper.style.display = 'none'; // Hidden initially
+                  const textInp = document.createElement('textarea');
+                  textInp.name = `${ph}_text_content`; // Unique name for text content
+                  textInp.placeholder = `Enter text for ${ph}`;
+                  textInp.rows = 4;
+                  // textInp.required = true; <--- REMOVED THIS LINE
+                  textInputWrapper.appendChild(textInp);
+                  div.appendChild(textInputWrapper);
+
+                  // Add event listeners to radio buttons to toggle visibility
+                  fileRadio.addEventListener('change', () => {
+                    fileInputWrapper.style.display = 'block';
+                    textInputWrapper.style.display = 'none';
+                    textInp.value = ''; // Clear text if switching to file
+                    // fileInp.required = true; // NOT setting required here anymore
+                    // textInp.required = false;
+                  });
+
+                  textRadio.addEventListener('change', () => {
+                    fileInputWrapper.style.display = 'none';
+                    textInputWrapper.style.display = 'block';
+                    fileInp.value = ''; // Clear file if switching to text
+                    // fileInp.required = false;
+                    // textInp.required = true; // NOT setting required here anymore
+                  });
+
+                  // Initial required state (neither is strictly required here)
+                  fileInp.required = false; // Explicitly set to false
+                  textInp.required = false; // Explicitly set to false
                 }
 
                 container.appendChild(div);
@@ -411,5 +511,4 @@
   </script>
 </body>
 </html>
-
 

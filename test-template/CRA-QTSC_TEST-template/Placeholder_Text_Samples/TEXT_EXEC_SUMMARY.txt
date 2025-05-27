@@ -1,0 +1,1 @@
+This executive summary provides an overview of the project’s purpose, its key objectives, and the major phases including discovery, architecture, DevOps, and ITSM evaluation.
