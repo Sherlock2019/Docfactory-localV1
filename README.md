@@ -1,8 +1,11 @@
-# 📄📊 DocFactory – Smart Placeholder Filler for DOCX & PPTX
+<img width="341" alt="image" src="https://github.com/user-attachments/assets/5578fb0b-dd64-44a9-a5f7-7cfd6c06a8f1" />
 
-![DocFactory Banner](https://your-image-url-if-any.com/banner.png)
 
-DocFactory is a smart, AI-enhanced document generator for teams who need to automate DOCX and PPTX production from templates. Upload your template with `{placeholders}`, enter text or upload content for each field, and generate a ready-to-deliver document in seconds.
+# 📄📊 DocFactory – Let s Build  Docs Faster , Easier , Better , with less Human error and Repeat ...
+
+
+
+DocFactory is a smart document generator for teams who need to automate DOCX and PPTX production from templates. Upload your template with `{placeholders}`, enter text or upload content for each field, and generate a ready-to-deliver document in seconds.
 
 ---
 
