@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solutions Finder — OpenStack SA (Accounts library)</title>
+<style>
+  body{font-family:Segoe UI, Arial; background:#f5f6f7; margin:0; padding:16px;}
+  .card{border:1px solid #e1e1e1;border-radius:8px;padding:10px;background:#fff}
+  .flex{display:flex;gap:10px;align-items:center}
+  .hdr{font-weight:600;margin:4px 0}
+  .sub{color:#666;font-size:12px}
+  select[multiple]{width:100%;padding:6px}
+  #sf-root{max-width:1200px;margin:auto}
+  button{cursor:pointer}
+</style>
+</head>
+<body>
+<div id="sf-root">
+  <h2 style="margin:8px 0;">🔎 Solutions Finder — OpenStack SA / Accounts</h2>
+
+  <div class="card" style="margin:8px 0; background:#f0f7ff; border-color:#d6e8ff">
+    <div class="hdr">Scope</div>
+    <div class="sub">This page is hard-scoped to: <code>https://raxglobal.sharepoint.com/sites/openstack_sa/Accounts</code></div>
+    <label class="sub"><input id="toggleScope" type="checkbox" checked> Keep the Accounts scope (recommended)</label>
+  </div>
+
+  <div style="display:flex; gap:8px; margin:8px 0; align-items:center;">
+    <input id="q" type="text" placeholder="Add extra KQL (optional), e.g. (OpenStack OR VMware) AND Proposal"
+           style="flex:1; padding:8px; border:1px solid #ddd; border-radius:6px;">
+    <button id="btnSearch" style="padding:8px 14px; border-radius:6px;">Search</button>
+    <button id="btnExport" style="padding:8px 14px; border-radius:6px;">Export CSV</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:8px;">
+    <div class="card">
+      <div class="hdr">Technology</div>
+      <div class="flex sub">Join with:
+        <label><input type="radio" name="op-tech" value="OR" checked> OR</label>
+        <label><input type="radio" name="op-tech" value="AND"> AND</label>
+      </div>
+      <select id="tech" multiple size="7">
+        <option>AI</option><option>OpenStack</option><option>VMware</option><option>AWS</option>
+        <option>Azure</option><option>GCP</option><option>Kubernetes</option><option>Kafka</option>
+        <option>Vault</option><option>Keycloak</option>
+      </select>
+      <input id="techNot" class="sub" placeholder="NOT terms (comma-sep)">
+    </div>
+
+    <div class="card">
+      <div class="hdr">Infrastructure</div>
+      <div class="flex sub">Join with:
+        <label><input type="radio" name="op-infra" value="OR" checked> OR</label>
+        <label><input type="radio" name="op-infra" value="AND"> AND</label>
+      </div>
+      <select id="infra" multiple size="7">
+        <option>Private Cloud</option><option>Hyperscaler</option><option>Hybrid</option>
+        <option>DR</option><option>GPUaaS</option><option>MLOps</option>
+      </select>
+      <input id="infraNot" class="sub" placeholder="NOT terms (comma-sep)">
+    </div>
+
+    <div class="card">
+      <div class="hdr">Database</div>
+      <div class="flex sub">Join with:
+        <label><input type="radio" name="op-db" value="OR" checked> OR</label>
+        <label><input type="radio" name="op-db" value="AND"> AND</label>
+      </div>
+      <select id="db" multiple size="7">
+        <option>PostgreSQL</option><option>MySQL</option><option>Microsoft SQL Server</option>
+        <option>Oracle</option><option>MongoDB</option><option>Redis</option><option>MinIO</option>
+      </select>
+      <input id="dbNot" class="sub" placeholder="NOT terms (comma-sep)">
+    </div>
+
+    <div class="card">
+      <div class="hdr">Document Type</div>
+      <div class="flex sub">Join with:
+        <label><input type="radio" name="op-doc" value="OR" checked> OR</label>
+        <label><input type="radio" name="op-doc" value="AND"> AND</label>
+      </div>
+      <select id="doc" multiple size="7">
+        <option>Architecture</option><option>Proposal</option><option>RFP</option>
+        <option>Diagram</option><option>Runbook</option><option>SOW</option>
+      </select>
+      <input id="docNot" class="sub" placeholder="NOT terms (comma-sep)">
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="hdr">Global NOT (exclude anywhere)</div>
+    <input id="globalNot" style="width:100%;padding:6px" placeholder="e.g., Azure, GCP">
+    <div class="sub" style="margin-top:6px">File types included: docx, pptx, pdf, vsdx, drawio, mmd, png, jpg</div>
+  </div>
+
+  <div class="card" style="margin-top:10px">
+    <div class="hdr">Boost 'Winning' docs</div>
+    <div class="sub">XRANK will boost results containing: win, won, customer story, case study, award</div>
+    <label class="sub"><input type="checkbox" id="boostWinning" checked> Prefer "winning projects" keywords</label>
+  </div>
+
+  <div id="status" class="sub" style="margin-top:10px"></div>
+  <div id="results" style="margin-top:12px"></div>
+  <div style="text-align:center;margin:16px 0;">
+    <button id="more" style="display:none;padding:8px 14px;border-radius:6px;">Load more</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = (id)=>document.getElementById(id);
+  const res=$("results"), status=$("status"), more=$("more");
+  let startRow=0, lastKql="", accumulatedRows=[];
+
+  // Hard-coded API base and default Path scope
+  const API_BASE = "https://raxglobal.sharepoint.com/sites/openstack_sa";
+  const DEFAULT_PATH_SCOPE = "Path:https://raxglobal.sharepoint.com/sites/openstack_sa/Accounts";
+
+  function selValues(el){ return Array.from(el.selectedOptions).map(o=>o.value.trim()).filter(Boolean); }
+  function radio(name){ return (document.querySelector(\`input[name="\${name}"]:checked"\)||{}).value || "OR"; }
+  function splitCsv(v){ return (v||"").split(",").map(s=>s.trim()).filter(Boolean); }
+  function qterm(s){ return \`"\${s.replace(/"/g,'\\\"')}"\`; }
+  function joinGroup(terms, op){ if(!terms.length) return ""; return terms.length===1?terms[0]:\`(\${terms.join(\` \${op} \`)})\`; }
+
+  const docTypeHints = {
+    "Architecture": "(architecture OR hld OR lld OR \"reference architecture\" OR title:architecture)",
+    "Proposal": "(proposal OR quotation OR bid OR quote OR title:proposal)",
+    "RFP": "(rfp OR \"request for proposal\" OR tender)",
+    "Diagram": "(diagram OR visio OR draw.io OR mermaid OR filetype:vsdx OR filetype:drawio OR filetype:png OR filetype:jpg OR filetype:mmd)",
+    "Runbook": "(runbook OR \"run book\" OR sop OR \"standard operating procedure\" OR playbook)",
+    "SOW": "(sow OR \"statement of work\")"
+  };
+
+  function buildFacetClause(values, op, negatives){
+    const pos = values.map(v => qterm(v));
+    const posJoined = joinGroup(pos, op);
+    const nots = (negatives||[]).map(v => \`NOT \${qterm(v)}\`).join(" ");
+    return [posJoined, nots].filter(Boolean).join(" ");
+  }
+
+  function buildBaseKQL(){
+    const free = $("q").value.trim();
+    const useScope = $("toggleScope").checked;
+    const parts = [];
+
+    // Always include library scope unless user turns it off
+    if (useScope) parts.push(\`(\${DEFAULT_PATH_SCOPE})\`);
+
+    if (free) {
+      // If user typed raw KQL operators, keep as-is
+      if (/(?:AND|OR|NOT|\(|\))/i.test(free)) parts.push(\`(\${free})\`);
+      else parts.push(qterm(free));
+    }
+
+    const tech=selValues($("tech")), opTech=radio("op-tech"), techNot=splitCsv($("techNot").value);
+    const infra=selValues($("infra")), opInfra=radio("op-infra"), infraNot=splitCsv($("infraNot").value);
+    const db  =selValues($("db")),   opDb  =radio("op-db"),   dbNot  =splitCsv($("dbNot").value);
+    const doc =selValues($("doc")),  opDoc =radio("op-doc"),  docNot =splitCsv($("docNot").value);
+    const gNot=splitCsv($("globalNot").value);
+
+    const techClause  = buildFacetClause(tech,  opTech, techNot);
+    const infraClause = buildFacetClause(infra, opInfra, infraNot);
+    const dbClause    = buildFacetClause(db,    opDb,    dbNot);
+    const docClauses  = doc.map(d => docTypeHints[d] || qterm(d));
+    const docClause   = buildFacetClause(docClauses, opDoc, docNot);
+
+    if (techClause)  parts.push(techClause);
+    if (infraClause) parts.push(infraClause);
+    if (dbClause)    parts.push(dbClause);
+    if (docClause)   parts.push(docClause);
+    if (gNot.length) parts.push(gNot.map(v=>\`NOT \${qterm(v)}\`).join(" "));
+    if (!parts.length) parts.push("*");
+
+    return \`(\${parts.join(" AND ")})\`;
+  }
+
+  function buildKQL(){
+    const base = buildBaseKQL();
+    const types = "(IsDocument:1 AND (filetype:docx OR filetype:pptx OR filetype:pdf OR filetype:vsdx OR filetype:drawio OR filetype:mmd OR filetype:png OR filetype:jpg))";
+    let kql = \`\${base} AND \${types}\`;
+
+    if ($("boostWinning").checked){
+      const boost = "(win OR won OR \"customer story\" OR \"case study\" OR award OR \"success story\")";
+      kql = \`XRANK(cb=500) \${kql} \${boost}\`;
+    }
+    return kql;
+  }
+
+  async function callSearch(kql, start){
+    const select = encodeURIComponent("Title,Path,FileType,SiteName,HitHighlightedSummary,Author,LastModifiedTime");
+    const refiners = encodeURIComponent("filetype,SPSiteURL");
+    const rowlimit=50;
+    const base = API_BASE.replace(/\/$/, "");
+    const url = \`\${base}/_api/search/query?querytext='\${encodeURIComponent(kql)}'&selectproperties='\${select}'&refiners='\${refiners}'&trimduplicates=false&rowlimit=\${rowlimit}&startrow=\${start}\`;
+    const r = await fetch(url, { headers:{'accept':'application/json;odata=nometadata'}, credentials:'same-origin' });
+    if(!r.ok) throw new Error(\`Search failed \${r.status}\`);
+    return r.json();
+  }
+
+  function escapeHtml(s){ return (s||"").replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
+  function render(rows, append=false){
+    if(!append) res.innerHTML = ""; 
+    rows.forEach(row=>{
+      const get = k => (row.Cells.find(c=>c.Key===k)||{}).Value || "";
+      const title=get("Title")||"(no title)", path=get("Path"), ft=get("FileType"), site=get("SiteName");
+      const sum=(get("HitHighlightedSummary")||"").replace(/<[^>]+>/g,"");
+      const card = document.createElement("div");
+      card.className="card";
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-weight:600">${escapeHtml(title)}</div>
+            <div class="sub" style="margin-top:4px">${escapeHtml(sum)}</div>
+            <div class="sub" style="margin-top:6px">📄 ${escapeHtml(ft||'')} • 🌐 ${escapeHtml(site||'')}</div>
+          </div>
+          <div>
+            <a href="${path}" target="_blank" style="display:inline-block;padding:8px 10px;border:1px solid #0078d4;color:#0078d4;border-radius:6px;text-decoration:none;">Open in SharePoint</a>
+          </div>
+        </div>`;
+      res.appendChild(card);
+    });
+  }
+
+  async function search(reset=true){
+    try{
+      if(reset){ startRow=0; accumulatedRows=[]; res.innerHTML=""; }
+      const kql = reset ? buildKQL() : lastKql;
+      lastKql = kql;
+      status.textContent = "Searching…";
+      more.style.display="none";
+      const data = await callSearch(kql, startRow);
+      const rr = data?.PrimaryQueryResult?.RelevantResults;
+      const rows = rr?.Table?.Rows || [];
+      accumulatedRows = accumulatedRows.concat(rows);
+      render(rows, !reset);
+      status.textContent = \`KQL: \${kql}\`;
+      more.style.display = rows.length >= 50 ? "inline-block" : "none";
+    }catch(e){
+      status.textContent = \`Error: \${e.message}\`;
+      console.error(e);
+    }
+  }
+
+  function exportCsv(){
+    if(!accumulatedRows.length){ alert("No results to export yet."); return; }
+    const headers = ["Title","Path","FileType","SiteName","LastModifiedTime","Author"];
+    const rows = accumulatedRows.map(row=>{
+      const get = k => (row.Cells.find(c=>c.Key===k)||{}).Value || "";
+      return headers.map(h => (get(h)||"").toString().replace(/"/g,'""'));
+    });
+    const csv = [headers.join(","), ...rows.map(r=>r.map(v=>`"${v}"`).join(","))].join("\r\n");
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "solutions-search.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  $("btnSearch").addEventListener("click", ()=>search(true));
+  $("q").addEventListener("keydown", e=>{ if(e.key==="Enter") search(true); });
+  $("more").addEventListener("click", ()=>{ startRow += 50; search(false); });
+  $("btnExport").addEventListener("click", exportCsv);
+
+  search(true);
+})();
+</script>
+</body>
+</html>
